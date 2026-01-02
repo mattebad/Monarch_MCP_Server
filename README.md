@@ -23,18 +23,72 @@ My MonarchMoney referral: https://www.monarchmoney.com/referral/ufmn0r83yf?r_sou
    ```
 
 2. **Install dependencies**:
+
+   **Important**: This project requires **Python 3.12+** (see `pyproject.toml`).
+
+   #### Windows (recommended: virtualenv)
+
+   ```powershell
+   cd C:\path\to\Monarch_MCP_Server
+   py -3.12 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install -U pip
+   pip install -r requirements.txt
+   pip install -e .
+   ```
+
+   #### macOS/Linux
+
    ```bash
    pip install -r requirements.txt
    pip install -e .
    ```
 
-3. **Configure Claude Desktop**:
+3. **Configure your MCP client**:
+
+   ## Cursor (recommended)
+
+   In Cursor: **Settings → Features → MCP → Add New MCP Server** (Type: `stdio`)
+
+   - **Command**: `C:\path\to\Monarch_MCP_Server\.venv\Scripts\mcp.exe`
+   - **Args**:
+     - `run`
+     - `--transport`
+     - `stdio`
+     - `C:\path\to\Monarch_MCP_Server\src\monarch_mcp_server\server.py:app`
+   - **Working directory (if available)**: `C:\path\to\Monarch_MCP_Server`
+
+   ## Claude Desktop
+
    Add this to your Claude Desktop configuration file:
    
    **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
    
    **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
    
+   #### Windows example (no `uv` required)
+
+   Replace paths with your actual install location.
+
+   ```json
+   {
+     "mcpServers": {
+       "Monarch Money": {
+         "command": "C:\\path\\to\\Monarch_MCP_Server\\.venv\\Scripts\\python.exe",
+         "args": [
+           "-m",
+           "mcp",
+           "run",
+           "C:\\path\\to\\Monarch_MCP_Server\\src\\monarch_mcp_server\\server.py"
+         ],
+         "cwd": "C:\\path\\to\\Monarch_MCP_Server"
+       }
+     }
+   }
+   ```
+
+   #### `uv` example (cross-platform)
+
    ```json
    {
      "mcpServers": {
@@ -70,8 +124,16 @@ python login_setup.py
 ```
 
 Follow the prompts:
-- Enter your Monarch Money email and password
-- Provide 2FA code if you have MFA enabled
+- Choose a login method:
+  - Email/password + MFA (direct)
+  - Apple/Google SSO (paste a Monarch token copied from your browser session)
+- If using email/password:
+  - Enter your Monarch Money email and password
+  - Provide 2FA code if you have MFA enabled
+- If using SSO/token:
+  - Sign in at `https://app.monarchmoney.com`
+  - Copy the `Authorization` token from a GraphQL/API request in your browser DevTools
+  - Paste it into the script (input is hidden)
 - Session will be saved automatically
 
 ### 3. Start Using in Claude Desktop
@@ -180,10 +242,10 @@ monarch-mcp-server/
 ```
 
 ### Session Management
-- Sessions are stored securely in `.mm/mm_session.pickle`
-- Automatic session discovery and loading
-- Sessions persist across Claude Desktop restarts
-- No need for frequent re-authentication
+- The Monarch API **token** is stored securely in your OS keyring (via `keyring`)
+- `login_setup.py` saves the token once; the server loads it automatically
+- Token persists across Cursor/Claude restarts
+- No need for frequent re-authentication (typically lasts weeks)
 
 ### Security Features
 - Credentials never transmitted through Claude Desktop

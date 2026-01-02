@@ -63,6 +63,21 @@ async def get_monarch_client() -> MonarchMoney:
         logger.info("✅ Using authenticated client from secure keyring storage")
         return client
 
+    # If no secure session, allow an explicit token via env var (useful for SSO users)
+    env_token = os.getenv("MONARCH_TOKEN")
+    if env_token:
+        token = env_token.strip()
+        if token.lower().startswith("bearer "):
+            token = token[len("bearer ") :].strip()
+        if token:
+            logger.info("✅ Using token from MONARCH_TOKEN environment variable")
+            try:
+                # Persist for future runs
+                secure_session.save_token(token)
+            except Exception as e:
+                logger.warning(f"⚠️  Could not save MONARCH_TOKEN to keyring: {e}")
+            return MonarchMoney(token=token)
+
     # If no secure session, try environment credentials
     email = os.getenv("MONARCH_EMAIL")
     password = os.getenv("MONARCH_PASSWORD")
@@ -83,7 +98,9 @@ async def get_monarch_client() -> MonarchMoney:
             logger.error(f"Failed to login to Monarch Money: {e}")
             raise
 
-    raise RuntimeError("🔐 Authentication needed! Run: python login_setup.py")
+    raise RuntimeError(
+        "🔐 Authentication needed! Run: python login_setup.py (or set MONARCH_TOKEN)"
+    )
 
 
 @mcp.tool()
@@ -94,13 +111,13 @@ def setup_authentication() -> str:
 1️⃣ Open Terminal and run:
    python login_setup.py
 
-2️⃣ Enter your Monarch Money credentials when prompted
-   • Email and password
-   • 2FA code if you have MFA enabled
+2️⃣ Choose a login method
+   • Email/password + 2FA (direct)
+   • Apple/Google SSO: copy a Monarch token from your browser session and paste it
 
 3️⃣ Session will be saved automatically and last for weeks
 
-4️⃣ Start using Monarch tools in Claude Desktop:
+4️⃣ Start using Monarch tools in Cursor/Claude:
    • get_accounts - View all accounts
    • get_transactions - Recent transactions
    • get_budgets - Budget information
